@@ -53,7 +53,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 
     <script>
-        // Вставь свой конфиг
+        // Твой конфиг
         const firebaseConfig = {
             apiKey: "AIzaSyBC8yqtzenwdGa0g6f1vRt2OTwVAWj44n0",
             authDomain: "kroll-7e9fe.firebaseapp.com",
@@ -80,20 +80,24 @@
         const editorSection = document.getElementById('editorSection');
 
         let userDocRef = null;
-        let saveTimeout = null;
+        let unsubscribeSnapshot = null;
 
+        // Регистрация
         registerBtn.onclick = () => {
             auth.createUserWithEmailAndPassword(emailInput.value, passwordInput.value)
                 .catch(err => alert(err.message));
         };
 
+        // Вход
         loginBtn.onclick = () => {
             auth.signInWithEmailAndPassword(emailInput.value, passwordInput.value)
                 .catch(err => alert(err.message));
         };
 
+        // Выход
         logoutBtn.onclick = () => auth.signOut();
 
+        // Реакция на смену пользователя
         auth.onAuthStateChanged(user => {
             if (user) {
                 authSection.style.display = 'none';
@@ -102,39 +106,32 @@
 
                 userDocRef = db.collection('notes').doc(user.uid);
 
+                // Отписка от прошлой подписки
+                if (unsubscribeSnapshot) unsubscribeSnapshot();
+
                 // Слушаем изменения в реальном времени
-                userDocRef.onSnapshot(doc => {
-                    if (doc.exists) {
-                        if (editor.value !== doc.data().text) {
-                            editor.value = doc.data().text || "";
-                        }
+                unsubscribeSnapshot = userDocRef.onSnapshot(doc => {
+                    if (doc.exists && editor.value !== doc.data().text) {
+                        editor.value = doc.data().text || "";
                     }
                 });
 
-                // Сохраняем при каждом изменении
-                editor.addEventListener('input', () => {
-                    if (!userDocRef) return;
+                // Мгновенное сохранение при изменении
+                editor.oninput = () => {
                     userDocRef.set({ text: editor.value })
                         .then(() => console.log("Текст сохранён"))
                         .catch(err => console.error("Ошибка сохранения:", err));
-                });
+                };
 
             } else {
+                // Очистка при выходе
                 authSection.style.display = 'block';
                 editorSection.style.display = 'none';
                 editor.value = "";
+                userDocRef = null;
+                if (unsubscribeSnapshot) unsubscribeSnapshot();
+                unsubscribeSnapshot = null;
             }
-        });
-
-
-        // Автосохранение каждые 2 секунды
-        editor.addEventListener('input', () => {
-            if (!userDocRef) return;
-            clearTimeout(saveTimeout);
-            saveTimeout = setTimeout(() => {
-                userDocRef.set({ text: editor.value });
-                console.log("Сохранено");
-            }, 2000);
         });
     </script>
 </body>
