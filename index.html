@@ -102,12 +102,16 @@
 
                 userDocRef = db.collection('notes').doc(user.uid);
 
-                // Загружаем сохранённый текст
-                userDocRef.get().then(doc => {
+                // Подписка на изменения в документе в реальном времени
+                userDocRef.onSnapshot(doc => {
                     if (doc.exists) {
-                        editor.value = doc.data().text || "";
+                        // Чтобы не затирать изменения во время ввода, проверим разницу
+                        if (editor.value !== doc.data().text) {
+                            editor.value = doc.data().text || "";
+                        }
                     }
                 });
+
             } else {
                 authSection.style.display = 'block';
                 editorSection.style.display = 'none';
