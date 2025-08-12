@@ -102,14 +102,21 @@
 
                 userDocRef = db.collection('notes').doc(user.uid);
 
-                // Подписка на изменения в документе в реальном времени
+                // Слушаем изменения в реальном времени
                 userDocRef.onSnapshot(doc => {
                     if (doc.exists) {
-                        // Чтобы не затирать изменения во время ввода, проверим разницу
                         if (editor.value !== doc.data().text) {
                             editor.value = doc.data().text || "";
                         }
                     }
+                });
+
+                // Сохраняем при каждом изменении
+                editor.addEventListener('input', () => {
+                    if (!userDocRef) return;
+                    userDocRef.set({ text: editor.value })
+                        .then(() => console.log("Текст сохранён"))
+                        .catch(err => console.error("Ошибка сохранения:", err));
                 });
 
             } else {
@@ -118,6 +125,7 @@
                 editor.value = "";
             }
         });
+
 
         // Автосохранение каждые 2 секунды
         editor.addEventListener('input', () => {
